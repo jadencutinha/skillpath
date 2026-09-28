@@ -1,0 +1,60 @@
+# Exports the TrainingRequests solution from the dev environment, unpacks it into src/,
+# and opens a PR with the changes. Run it manually from the Actions tab after making changes in the maker portal.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   PP_ENVIRONMENT_URL  https://<org>.crm.dynamics.com
+#   PP_TENANT_ID        Entra tenant ID
+#   PP_APP_ID           App registration (client) ID
+#   PP_CLIENT_SECRET    App registration secret
+# The app registration must be added to the environment as an Application user with the
+# System Customizer role (see README → "CI/CD service principal").
+name: Export solution
+
+on:
+  workflow_dispatch:
+    inputs:
+      solution:
+        description: Solution unique name
+        default: TrainingRequests
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    env:
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Export unmanaged solution
+        uses: microsoft/powerplatform-actions/export-solution@v1
+        with:
+          environment-url: ${{ secrets.PP_ENVIRONMENT_URL }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          solution-name: ${{ env.SOLUTION }}
+          solution-output-file: out/${{ env.SOLUTION }}.zip
+
+      - name: Unpack into src/
+        uses: microsoft/powerplatform-actions/unpack-solution@v1
+        with:
+          solution-file: out/${{ env.SOLUTION }}.zip
+          solution-folder: src
+          solution-type: Unmanaged
+          overwrite-files: true
+          process-canvas-apps: true
+
+      - name: Open PR with the exported source
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: solution-export/${{ github.run_number }}
+          commit-message: "Export ${{ env.SOLUTION }} solution (run ${{ github.run_number }})"
+          title: "Solution export: ${{ env.SOLUTION }}"
+          body: Automated export + unpack of the `${{ env.SOLUTION }}` solution from the dev environment.
+          add-paths: src/**
