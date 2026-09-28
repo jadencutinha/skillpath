@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Solution export artifacts (the unpacked source in src/ IS committed)
+out/
+*.zip
+
+# Local secrets
+.env
+*.local.json
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# Power BI temp
+*.pbix.bak

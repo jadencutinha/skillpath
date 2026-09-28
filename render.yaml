@@ -1,0 +1,15 @@
+# Render Blueprint: New > Blueprint > pick this repo. Deploys the API on the free plan.
+services:
+  - type: web
+    name: training-estimate-api
+    runtime: python
+    plan: free
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: API_KEY
+        generateValue: true
