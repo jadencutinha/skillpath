@@ -1,0 +1,75 @@
+// Create a blank "_Measures" table (Enter data → one empty column → delete it after) to hold these.
+// Status is filtered on the label column ("Request Status" = jc_requeststatusname). Dataverse
+// loads choices as numbers, and the numbers depend on your publisher prefix.
+
+Total Requests =
+COUNTROWS ( 'Training Request' )
+
+Approved Requests =
+// Completed requests were approved first, so they count as approvals.
+CALCULATE (
+    [Total Requests],
+    'Training Request'[Request Status] IN { "Approved", "Completed" }
+)
+
+Rejected Requests =
+CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Rejected" )
+
+Pending Requests =
+CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Submitted" )
+
+Decided Requests =
+[Approved Requests] + [Rejected Requests]
+
+Approval Rate =
+// Denominator is decided requests only. Drafts and pending requests would make the rate
+// look lower than it really is. DIVIDE returns BLANK instead of an error when nothing is decided.
+DIVIDE ( [Approved Requests], [Decided Requests] )
+
+Approved Spend =
+// Uses Course Cost captured on the request (price at request time). The
+// relationship-based version from the notes also works:
+//   SUMX ( 'Training Request', RELATED ( 'Training Course'[Cost] ) )
+// but it iterates row by row and uses today's catalog price, not the price when requested.
+CALCULATE (
+    SUM ( 'Training Request'[Course Cost] ),
+    'Training Request'[Request Status] IN { "Approved", "Completed" }
+)
+
+Pending Spend =
+CALCULATE ( SUM ( 'Training Request'[Course Cost] ), 'Training Request'[Request Status] = "Submitted" )
+
+Avg Days to Decision =
+// Hours / 24 instead of DATEDIFF(..., DAY), which only counts midnight crossings.
+// A same-day decision is ~0.2 days, not 0.
+AVERAGEX (
+    FILTER (
+        'Training Request',
+        NOT ISBLANK ( 'Training Request'[Decision Date] )
+            && NOT ISBLANK ( 'Training Request'[Submitted On] )
+    ),
+    DIVIDE (
+        DATEDIFF ( 'Training Request'[Submitted On], 'Training Request'[Decision Date], HOUR ),
+        24
+    )
+)
+
+Decisions by Decision Date =
+// Uses the INACTIVE Decision Day → Date relationship, so "decisions made in March" differs
+// from "requests submitted in March".
+CALCULATE (
+    [Decided Requests],
+    USERELATIONSHIP ( 'Training Request'[Decision Day], 'Date'[Date] )
+)
+
+Approval Rate vs Prior Month =
+VAR CurrentRate = [Approval Rate]
+VAR PriorRate   = CALCULATE ( [Approval Rate], DATEADD ( 'Date'[Date], -1, MONTH ) )
+RETURN
+    IF ( NOT ISBLANK ( PriorRate ), CurrentRate - PriorRate )
+
+Oldest Pending (days) =
+MAXX (
+    FILTER ( 'Training Request', 'Training Request'[Request Status] = "Submitted" ),
+    DATEDIFF ( 'Training Request'[Submitted On], NOW (), DAY )
+)
