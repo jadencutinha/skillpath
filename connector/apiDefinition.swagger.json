@@ -1,0 +1,89 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Training Estimate",
+    "description": "Cost-per-hour and budget tier for training requests.",
+    "version": "1.0.0"
+  },
+  "host": "training-estimate-api.onrender.com",
+  "basePath": "/",
+  "schemes": ["https"],
+  "consumes": [],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key"
+    }
+  },
+  "security": [{ "api_key": [] }],
+  "paths": {
+    "/estimate": {
+      "get": {
+        "operationId": "GetEstimate",
+        "summary": "Get cost estimate",
+        "description": "Returns cost per hour and a budget tier for a course.",
+        "parameters": [
+          {
+            "name": "cost",
+            "in": "query",
+            "required": true,
+            "type": "number",
+            "format": "double",
+            "x-ms-summary": "Cost",
+            "description": "Course cost in USD."
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": true,
+            "type": "integer",
+            "format": "int32",
+            "x-ms-summary": "Hours",
+            "description": "Course length in hours (must be greater than 0)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estimate",
+            "schema": { "$ref": "#/definitions/Estimate" }
+          },
+          "401": { "description": "Invalid or missing API key" },
+          "422": { "description": "Invalid parameters" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "GetHealth",
+        "summary": "Health check",
+        "description": "Returns ok when the service is up.",
+        "x-ms-visibility": "internal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": { "status": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Estimate": {
+      "type": "object",
+      "properties": {
+        "cost": { "type": "number", "format": "double", "x-ms-summary": "Cost" },
+        "hours": { "type": "integer", "format": "int32", "x-ms-summary": "Hours" },
+        "cost_per_hour": { "type": "number", "format": "double", "x-ms-summary": "Cost per hour" },
+        "tier": { "type": "string", "enum": ["standard", "high"], "x-ms-summary": "Tier" },
+        "premium_rate": { "type": "boolean", "x-ms-summary": "Premium rate" },
+        "requires_second_approval": { "type": "boolean", "x-ms-summary": "Requires second approval" }
+      }
+    }
+  }
+}
