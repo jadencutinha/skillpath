@@ -1,0 +1,29 @@
+title,course,justification,status,submitted_on,decision_date,decision_comments
+AZ-900 for new cloud team,Azure Fundamentals (AZ-900),Team is moving workloads to Azure in Q2.,Completed,2026-01-06T15:10:00Z,2026-01-07T13:00:00Z,Great fit for the migration.
+GDPR refresher,Data Privacy and GDPR Compliance,Annual compliance requirement.,Completed,2026-01-12T14:00:00Z,2026-01-12T18:30:00Z,Required. Approved.
+PMP prep for PMO lead,PMP Certification Prep,Leading three cross-team projects this year and the PMO standard requires PMP.,Approved,2026-01-20T16:45:00Z,2026-01-26T15:00:00Z,Approved. Please share notes with the PMO.
+Python upskilling,Advanced Python for Data Engineering,Building the new ingestion pipeline.,Approved,2026-02-02T17:20:00Z,2026-02-04T14:10:00Z,Approved.
+Exec leadership cohort,Executive Leadership Program,Nominated for the director track.,Rejected,2026-02-09T15:00:00Z,2026-02-20T16:00:00Z,No budget this quarter. Reapply in Q3.
+Conduct training - new hire,Workplace Conduct and Anti-Harassment,Onboarding requirement.,Completed,2026-02-16T13:30:00Z,2026-02-16T15:00:00Z,Auto-approved compliance course.
+AWS bootcamp,AWS Solutions Architect Associate Bootcamp,Supporting the multi-cloud integration project; certification needed for partner tier.,Approved,2026-03-03T18:00:00Z,2026-03-09T14:45:00Z,Approved. Complete by end of Q2.
+Manager essentials,New Manager Essentials,Promoted to team lead in March.,Approved,2026-03-10T14:15:00Z,2026-03-11T16:30:00Z,Congrats on the promotion.
+Presentation skills,Business Writing and Presentation Skills,Presenting quarterly results to leadership.,Approved,2026-03-24T15:40:00Z,2026-03-27T13:20:00Z,Approved.
+PL-400 prep,Power Platform Developer (PL-400) Prep,Owning the Power Platform CoE backlog; certification is on my development plan.,Approved,2026-04-01T16:00:00Z,2026-04-03T17:00:00Z,Approved.
+Second AWS seat,AWS Solutions Architect Associate Bootcamp,Backup engineer for the integration project.,Rejected,2026-04-08T14:30:00Z,2026-04-15T15:10:00Z,One seat per project for now.
+Python for analytics,Advanced Python for Data Engineering,Automating monthly reporting.,Approved,2026-04-14T19:00:00Z,2026-04-16T14:00:00Z,Approved.
+GDPR for sales ops,Data Privacy and GDPR Compliance,Handling EU customer data.,Approved,2026-04-22T13:10:00Z,2026-04-22T20:00:00Z,Approved.
+AZ-900 for support team,Azure Fundamentals (AZ-900),Tier 2 support now handles Azure tickets.,Approved,2026-05-05T15:30:00Z,2026-05-06T13:45:00Z,Approved.
+Leadership program,Executive Leadership Program,Succession plan for the ops director role requires this program.,Approved,2026-05-12T16:20:00Z,2026-05-29T14:00:00Z,Approved by VP after second review.
+Writing workshop,Business Writing and Presentation Skills,Improve customer-facing documentation.,Rejected,2026-05-19T14:50:00Z,2026-05-21T15:30:00Z,Please try the free internal workshop first.
+Manager essentials - ops,New Manager Essentials,New shift supervisor.,Approved,2026-06-02T13:00:00Z,2026-06-03T16:10:00Z,Approved.
+PMP for program manager,PMP Certification Prep,Taking over the ERP rollout program.,Rejected,2026-06-09T17:30:00Z,2026-06-18T14:20:00Z,Defer until after ERP go-live.
+PL-400 for citizen dev lead,Power Platform Developer (PL-400) Prep,Leading citizen developer enablement; need pro-dev depth for ALM and plug-ins.,Approved,2026-06-23T15:15:00Z,2026-06-25T13:30:00Z,Approved.
+Conduct training - contractor,Workplace Conduct and Anti-Harassment,Required for site access.,Approved,2026-07-07T14:00:00Z,2026-07-07T14:45:00Z,Approved.
+Python for QA automation,Advanced Python for Data Engineering,Moving test suite to pytest.,Approved,2026-07-21T16:40:00Z,2026-07-24T15:00:00Z,Approved.
+Exec program - finance,Executive Leadership Program,Nominated by CFO for leadership pipeline.,Error,2026-08-04T15:00:00Z,,
+AWS bootcamp - platform team,AWS Solutions Architect Associate Bootcamp,Platform team is taking over AWS landing zone ownership in Q4.,Submitted,2026-09-08T14:30:00Z,,
+Presentation skills - PM,Business Writing and Presentation Skills,Customer demos every sprint.,Submitted,2026-09-15T16:00:00Z,,
+AZ-900 for finance analysts,Azure Fundamentals (AZ-900),Finance reporting moving to Fabric.,Submitted,2026-09-21T13:20:00Z,,
+Manager essentials - finance,New Manager Essentials,Promoted to finance team lead.,Submitted,2026-09-24T15:45:00Z,,
+PMP prep - draft,PMP Certification Prep,Still confirming project scope.,Draft,,,
+GDPR - draft,Data Privacy and GDPR Compliance,,Draft,,,

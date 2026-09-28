@@ -1,0 +1,12 @@
+name,provider,category,cost,hours,active
+Azure Fundamentals (AZ-900),Microsoft Learn,Technical,165,8,true
+AWS Solutions Architect Associate Bootcamp,A Cloud Guru,Technical,1450,40,true
+Advanced Python for Data Engineering,Coursera,Technical,399,30,true
+Power Platform Developer (PL-400) Prep,Microsoft Learn,Technical,1200,24,true
+New Manager Essentials,LinkedIn Learning,Leadership,850,16,true
+Executive Leadership Program,Northwind Leadership Institute,Leadership,2495,24,true
+Data Privacy and GDPR Compliance,Compliance Academy,Compliance,300,6,true
+Workplace Conduct and Anti-Harassment,Internal HR,Compliance,0,2,true
+Business Writing and Presentation Skills,Contoso Learning,Professional Development,695,12,true
+PMP Certification Prep,Contoso Learning,Professional Development,1895,35,true
+SharePoint 2013 Administration,Contoso Learning,Technical,600,20,false
