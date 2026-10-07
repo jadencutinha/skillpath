@@ -5,11 +5,25 @@ Create it inside the solution: **TrainingRequests → New → App → Canvas app
 `pac solution unpack --processCanvasApps` later turns it into readable `.pa.yaml` source.
 
 **Data sources:** Training Requests, Training Courses, Users, Security Roles, and the
-Training Estimate connector (after Step 7).
+Training Estimate connector.
 
-> **Choice syntax.** This file writes Request Status values as
-> `'Request Status (Training Requests)'.Submitted`. Studio's IntelliSense may show a slightly
+> **Choice syntax.** This file writes choice values as
+> `'Request Status (Training Requests)'.Submitted` and
+> `'Requested Action (Training Requests)'.Submit`. Studio's IntelliSense may show a slightly
 > different name. If so, use what it suggests and keep the rest of the formula.
+
+## What the app is allowed to write
+
+The app writes four columns on a request and nothing else: **Title, Course, Justification, and
+Requested Action**. Status, approver, cost, and dates belong to the flows and are locked with column
+security ([`../dataverse/security-roles.md`](../dataverse/security-roles.md)). Two consequences shape
+every formula below:
+
+- **The app never sets Request Status.** To submit, withdraw, or complete a request it writes a
+  *command* into Requested Action, and a flow applies it a few seconds later. While a command is
+  outstanding the app shows *Submitting…* in place of the status.
+- **Forms must not contain cards for locked columns.** A card sends its value on save, and Dataverse
+  rejects a write to a column the user can't update. The form has exactly four cards.
 
 ## App
 
@@ -17,11 +31,12 @@ Training Estimate connector (after Step 7).
 `App.OnStart` (`Set(...)`), which blocks app load.
 
 ```powerfx
-// The signed-in user's Dataverse row. The Users table is keyed by email.
-fxMe = LookUp(Users, 'Primary Email' = User().Email);
+// The signed-in user's Dataverse row, matched on the Entra object ID.
+// (Matching on email breaks when a user's sign-in name and primary email differ.)
+fxMe = LookUp(Users, 'Azure AD Object ID' = User().EntraObjectId);
 
-// Show the Manager Review screen only to managers or admins.
-// UX only. Dataverse security roles enforce who can actually read or write which rows.
+// Show the Approvals screen only to managers or admins.
+// UX only. Dataverse security roles enforce who can actually read which rows.
 fxIsManager =
     !IsEmpty(
         Filter(
@@ -29,21 +44,24 @@ fxIsManager =
             Name in ["Training Manager", "Training Admin", "System Administrator"]
         )
     );
+
+// Used only while the estimate API is unreachable. The API's high_cost_threshold is the
+// source of truth; see "The $1,000 threshold" in dataverse/schema.md.
+fxFallbackThreshold = 1000;
 ```
 
 > The relationship name `'Security Roles (systemuserroles_association)'` is how IntelliSense shows
-> the N:N from Users to Security Roles. The check only sees roles assigned directly to the user. It
-> does not see roles inherited through a team. That's fine for this project, and worth mentioning
-> if asked.
+> the N:N from Users to Security Roles. The check only sees roles assigned directly to the user, not
+> roles inherited through a team. Give approvers the Training Manager role directly.
 
 `App.StartScreen`: `scrHome`
 
 Shared header: add a horizontal container at the top of every screen with 3 buttons.
-`btnNavHome`, `btnNavCatalog`, and `btnNavManager` call `Navigate(scrHome)`,
-`Navigate(scrCatalog)`, and `Navigate(scrManager)`.
+`btnNavHome`, `btnNavCatalog`, and `btnNavApprovals` call `Navigate(scrHome)`,
+`Navigate(scrCatalog)`, and `Navigate(scrApprovals)`.
 
 ```powerfx
-// btnNavManager.Visible
+// btnNavApprovals.Visible
 fxIsManager
 ```
 
@@ -57,66 +75,139 @@ fxIsManager
 | `lblTitle` (in gallery) | Text | `ThisItem.Title` |
 | `lblCourse` | Text | `ThisItem.Course.Name` |
 | `lblSubmitted` | Text | `If(IsBlank(ThisItem.'Submitted On'), "Not submitted", "Submitted " & Text(ThisItem.'Submitted On', "mmm d, yyyy"))` |
-| `lblStatus` | Text | `Text(ThisItem.'Request Status')` |
-| `lblStatus` | Color | see below |
+| `lblStatus` | Text, Color | see below |
+| `lblWaiting` | Text | `If(ThisItem.'Request Status' = 'Request Status (Training Requests)'.Submitted && !IsBlank(ThisItem.'Pending With'), "Waiting on " & ThisItem.'Pending With')` |
 | `lblDecision` | Text | `ThisItem.'Decision Comments'` |
 | `btnNewRequest` | OnSelect | `Set(varPreselectCourse, Blank()); NewForm(frmRequest); Navigate(scrNewRequest, ScreenTransition.Cover)` |
+| `icoRefresh` | OnSelect | `Refresh('Training Requests')` |
 | `lblEmpty` | Visible | `IsEmpty(galMyRequests.AllItems)` |
 | `lblEmpty` | Text | `"No requests yet. Browse the catalog to get started."` |
 
 ```powerfx
 // galMyRequests.Items
 Sort(
-    Filter('Training Requests', 'Created By'.User = fxMe.User),
+    Filter('Training Requests', Owner = fxMe),
     'Created On',
     SortOrder.Descending
 )
 ```
 
-> **Changed from the notes:** `Owner.'Primary Email'` doesn't work, because `Owner` is
-> polymorphic (it can be a User or a Team), so you can't dot into its columns directly.
-> Comparing `'Created By'` by ID is also **delegable**, so it works beyond the 500/2000-row limit.
+The requester is the row's **owner**, the same definition the security roles, the flows, and the
+dashboard use. `Owner` is polymorphic (a User or a Team), so you can't dot into its columns, but you
+can compare it to a record. For an employee this filter changes nothing, because Dataverse already
+returns only their rows. It matters for managers and admins, who can read more than they own.
 
 ```powerfx
-// lblStatus.Color
+// lblStatus.Text. An outstanding command takes priority over the stored status.
 Switch(
-    ThisItem.'Request Status',
-    'Request Status (Training Requests)'.Approved,  Color.Green,
-    'Request Status (Training Requests)'.Completed, Color.DarkGreen,
-    'Request Status (Training Requests)'.Rejected,  Color.Red,
-    'Request Status (Training Requests)'.Error,     Color.DarkRed,
-    'Request Status (Training Requests)'.Submitted, Color.Orange,
-    Color.Gray
+    ThisItem.'Requested Action',
+    'Requested Action (Training Requests)'.Submit,   "Submitting…",
+    'Requested Action (Training Requests)'.Withdraw, "Withdrawing…",
+    'Requested Action (Training Requests)'.Complete, "Updating…",
+    Text(ThisItem.'Request Status')
+)
+
+// lblStatus.Color
+If(
+    !IsBlank(ThisItem.'Requested Action'), Color.Gray,
+    Switch(
+        ThisItem.'Request Status',
+        'Request Status (Training Requests)'.Approved,  Color.Green,
+        'Request Status (Training Requests)'.Completed, Color.DarkGreen,
+        'Request Status (Training Requests)'.Rejected,  Color.Red,
+        'Request Status (Training Requests)'.Error,     Color.DarkRed,
+        'Request Status (Training Requests)'.Expired,   Color.DarkOrange,
+        'Request Status (Training Requests)'.Submitted, Color.Orange,
+        Color.Gray   // Draft, Withdrawn
+    )
 )
 ```
 
+### Row actions
+
+Each gallery row shows the one or two actions that make sense for its status. All of them are
+hidden while a command is outstanding (`IsBlank(ThisItem.'Requested Action')` in every `Visible`),
+so a second tap can't queue a conflicting command.
+
+| Button | Visible when status is | OnSelect |
+|---|---|---|
+| `btnEdit` | Draft | `Set(varPreselectCourse, Blank()); Set(varEditRequest, ThisItem); EditForm(frmRequest); Navigate(scrNewRequest, ScreenTransition.Cover)` |
+| `btnWithdraw` (text: `If(status = Draft, "Discard", "Withdraw")`) | Draft, Submitted | command `Withdraw`, below |
+| `btnComplete` (text: `"Mark completed"`) | Approved | command `Complete`, below |
+| `btnAgain` (text: `"Request again"`) | Rejected, Withdrawn, Expired, Error | see below |
+
+```powerfx
+// btnWithdraw.OnSelect. btnComplete is the same with .Complete and its own messages.
+IfError(
+    Patch(
+        'Training Requests',
+        ThisItem,
+        { 'Requested Action': 'Requested Action (Training Requests)'.Withdraw }
+    );
+    Set(varPolling, true),
+    Notify("Could not withdraw: " & FirstError.Message, NotificationType.Error)
+)
+
+// btnAgain.OnSelect. A finished request can't be reopened, so start a new one for the same course.
+// The LookUp returns blank if the course has since been retired from the catalog.
+Set(
+    varPreselectCourse,
+    LookUp('Training Courses', 'Training Course' = ThisItem.Course.'Training Course' && Active = true)
+);
+NewForm(frmRequest);
+Navigate(scrNewRequest, ScreenTransition.Cover)
+```
+
+### Picking up the flow's result
+
+A command is applied by a flow, so the new status arrives a few seconds after the tap. A timer
+refreshes the gallery until nothing is outstanding, then stops.
+
+| Control | Property | Formula |
+|---|---|---|
+| `scrHome` | OnVisible | `Refresh('Training Requests')` |
+| `tmrPoll` (hidden timer) | Duration | `4000` |
+| `tmrPoll` | Start, Repeat | `varPolling` |
+| `tmrPoll` | OnTimerEnd | `Refresh('Training Requests'); If(IsEmpty(Filter(galMyRequests.AllItems, !IsBlank('Requested Action'))), Set(varPolling, false))` |
+
+If a row stays on *Submitting…* for more than a minute, a flow is off or failing. That is what the
+admin's **Needs Attention** view is for ([`model-driven-app.md`](model-driven-app.md)).
+
 ---
 
-## 2. scrNewRequest: New Request
+## 2. scrNewRequest: New Request / Edit Draft
 
 Add an **Edit form** `frmRequest`:
 
 - DataSource: `'Training Requests'`
+- Item: `varEditRequest`
 - DefaultMode: `FormMode.New`
-- Visible fields: **Title, Course, Justification, Approver**
-- Also add **Request Status, Submitted On, Course Cost**, and set each of those cards'
-  `Visible` to `false`. A form only writes columns that have a card.
+- Cards: **Title, Course, Justification, Requested Action**, and no others. Set the Requested
+  Action card's `Visible` to `false`. A form only writes columns that have a card, which is exactly
+  what's wanted here.
 
-Rename the controls inside the cards: `cmbCourse`, `txtJustification`, and `cmbApprover`.
+The same form creates a request (`NewForm`, from *New request*, the catalog, or *Request again*) and
+edits a saved draft (`EditForm`, from `btnEdit`).
+
+Rename the controls inside the cards: `cmbCourse` and `txtJustification`.
 
 | Control | Property | Formula |
 |---|---|---|
+| Course card | DisplayMode | `If(frmRequest.Mode = FormMode.New, DisplayMode.Edit, DisplayMode.View)` |
 | Course card → `cmbCourse` | Items | `Filter('Training Courses', Active = true)` |
 | `cmbCourse` | DefaultSelectedItems | `If(IsBlank(varPreselectCourse), Parent.Default, varPreselectCourse)` |
 | `cmbCourse` | OnChange | `Select(btnRefreshEstimate)` |
-| Approver card → `cmbApprover` | Items | `Sort(Users, 'Full Name')` |
-| Justification card | Required | `cmbCourse.Selected.Cost > 1000` |
-| Request Status card | Update | `varSubmitStatus` |
-| Submitted On card | Update | `If(varSubmitStatus = 'Request Status (Training Requests)'.Submitted, Now(), Blank())` |
-| Course Cost card | Update | `cmbCourse.Selected.Cost` |
+| Justification card | Required | `cmbCourse.Selected.Cost > varThreshold` |
+| Requested Action card | Update | `If(varSubmitIntent, 'Requested Action (Training Requests)'.Submit, Blank())` |
+| `lblApprover` | Text | `"Approver: " & Coalesce(fxMe.Manager.'Full Name', "assigned by the training team")` |
 
-The `Justification card.Required` row mirrors the server-side business rule in the UI, so the user
-sees the requirement before they submit.
+- **Course is locked once the draft exists.** Column security lets the requester set Course when
+  creating a request but not change it afterwards. To request a different course, discard the draft
+  and start a new one. This is what keeps an approved request tied to the course that was approved.
+- **There is no approver picker.** The flow sends the approval to the requester's manager.
+  `lblApprover` only tells the user who that will be.
+- **Justification card.Required** mirrors the server-side business rule in the UI, so the user sees
+  the requirement before they submit.
 
 ### Cost estimate (custom connector)
 
@@ -137,12 +228,15 @@ If(
         Set(varEstimate, Blank());
         Notify("Cost estimate is unavailable right now. You can still submit.", NotificationType.Warning)
     )
-)
+);
+// The API owns the threshold. Fall back to the local constant only when it didn't answer.
+Set(varThreshold, Coalesce(varEstimate.high_cost_threshold, fxFallbackThreshold))
 ```
 
 ```powerfx
 // scrNewRequest.OnVisible
-Set(varSubmitStatus, 'Request Status (Training Requests)'.Submitted);
+Set(varSubmitIntent, false);
+Set(varThreshold, fxFallbackThreshold);
 Select(btnRefreshEstimate)
 ```
 
@@ -161,7 +255,8 @@ If(varEstimate.tier = "high", Color.OrangeRed, Color.DarkGreen)
 ```
 
 If the API fails (for example, Render is asleep), `IfError` means the form still works. The
-estimate is informational only, and the flow makes the authoritative call.
+estimate shown here is informational. The flow makes its own call when the request is submitted, and
+that call decides the routing.
 
 ### Submit and Save as draft
 
@@ -170,11 +265,12 @@ estimate is informational only, and the flow makes the authoritative call.
 If(
     IsBlank(cmbCourse.Selected),
         Notify("Please select a course.", NotificationType.Error),
-    IsBlank(cmbApprover.Selected),
-        Notify("Please select an approver.", NotificationType.Error),
-    cmbCourse.Selected.Cost > 1000 && IsBlank(Trim(txtJustification.Text)),
-        Notify("Justification is required for courses over $1,000.", NotificationType.Error),
-    Set(varSubmitStatus, 'Request Status (Training Requests)'.Submitted);
+    cmbCourse.Selected.Cost > varThreshold && IsBlank(Trim(txtJustification.Text)),
+        Notify(
+            "Justification is required for courses over " & Text(varThreshold, "$#,##0") & ".",
+            NotificationType.Error
+        ),
+    Set(varSubmitIntent, true);
     SubmitForm(frmRequest)
 )
 
@@ -182,34 +278,32 @@ If(
 If(
     IsBlank(cmbCourse.Selected),
     Notify("Please select a course.", NotificationType.Error),
-    Set(varSubmitStatus, 'Request Status (Training Requests)'.Draft);
+    Set(varSubmitIntent, false);
     SubmitForm(frmRequest)
 )
 
 // frmRequest.OnSuccess
 Notify(
-    If(
-        varSubmitStatus = 'Request Status (Training Requests)'.Submitted,
-        "Request submitted! Your approver has been notified.",
-        "Draft saved."
-    ),
+    If(varSubmitIntent, "Request sent for approval.", "Draft saved."),
     NotificationType.Success
 );
+Set(varPolling, varSubmitIntent);
 Set(varPreselectCourse, Blank());
 Set(varEstimate, Blank());
 ResetForm(frmRequest);
 Navigate(scrHome, ScreenTransition.Fade)
 
 // frmRequest.OnFailure
-Notify("Submission failed: " & frmRequest.Error, NotificationType.Error)
+Notify("Could not save: " & frmRequest.Error, NotificationType.Error)
 
 // btnCancel.OnSelect
 ResetForm(frmRequest); Back()
 ```
 
 `If(cond1, result1, cond2, result2, ..., default)` is Power Fx's multi-branch `If`. The client-side
-checks give fast feedback. The business rule is still the real enforcement: if you remove the third
-check, the save still fails with the rule's message in `OnFailure`.
+checks give fast feedback. They are not the enforcement: a client that skips them and submits an
+expensive course with no justification is stopped by the business rule when the flow stamps the
+cost, and the request ends in Error with the rule's message.
 
 ---
 
@@ -244,21 +338,27 @@ functions like `Len`, `Mid`, or `EndsWith` are not. With those, Power Apps would
 
 ---
 
-## 4. scrManager: Manager Review
+## 4. scrApprovals: Waiting on me
+
+A queue, not a decision form. It lists the requests whose approval is currently assigned to the
+signed-in user and opens that approval.
 
 ```powerfx
-// scrManager.OnVisible  (UX guard. Security itself lives in Dataverse roles.)
-If(!fxIsManager, Navigate(scrHome))
+// scrApprovals.OnVisible  (UX guard. Security itself lives in Dataverse roles.)
+If(!fxIsManager, Navigate(scrHome), Refresh('Training Requests'))
 ```
 
 | Control | Property | Formula |
 |---|---|---|
 | `galPending` | Items | see below |
-| `lblPendingTitle` (in gallery) | Text | `ThisItem.Title & " — " & ThisItem.'Created By'.'Full Name'` |
+| `lblPendingTitle` (in gallery) | Text | `ThisItem.Title` |
 | `lblPendingDetail` | Text | `ThisItem.Course.Name & "  ·  " & Text(ThisItem.'Course Cost', "$#,##0") & "  ·  submitted " & Text(ThisItem.'Submitted On', "mmm d")` |
+| `lblPendingAge` | Text | `DateDiff(ThisItem.'Submitted On', Now(), TimeUnit.Days) & " days waiting"` |
 | `lblJustification` (detail pane) | Text | `galPending.Selected.Justification` |
-| `txtComments` (multiline input) | Default | `""` |
-| `btnApprove`, `btnReject` | DisplayMode | `If(IsBlank(galPending.Selected), DisplayMode.Disabled, DisplayMode.Edit)` |
+| `btnReview` | Text | `"Review and respond"` |
+| `btnReview` | DisplayMode | `If(IsBlank(galPending.Selected.'Approval Link'), DisplayMode.Disabled, DisplayMode.Edit)` |
+| `btnReview` | OnSelect | `Launch(galPending.Selected.'Approval Link')` |
+| `icoRefreshPending` | OnSelect | `Refresh('Training Requests')` |
 
 ```powerfx
 // galPending.Items. Oldest first, so nothing waits forever.
@@ -266,62 +366,38 @@ Sort(
     Filter(
         'Training Requests',
         'Request Status' = 'Request Status (Training Requests)'.Submitted,
-        Approver.User = fxMe.User
+        'Pending With' = fxMe.'Primary Email'
     ),
     'Submitted On',
     SortOrder.Ascending
 )
 ```
 
-```powerfx
-// btnApprove.OnSelect
-IfError(
-    Patch(
-        'Training Requests',
-        galPending.Selected,
-        {
-            'Request Status': 'Request Status (Training Requests)'.Approved,
-            'Decision Date': Now(),
-            'Decision Comments': txtComments.Text
-        }
-    );
-    Notify("Approved", NotificationType.Success);
-    Reset(txtComments),
-    Notify("Could not approve: " & FirstError.Message, NotificationType.Error)
-)
+`Pending With` is written by the approval flow at the start of each stage, so this one filter serves
+both the manager and the second approver: a high-cost request moves from one person's queue to the
+other's when the first approves.
 
-// btnReject.OnSelect. Rejections must say why.
-If(
-    IsBlank(Trim(txtComments.Text)),
-    Notify("Add a comment explaining the rejection.", NotificationType.Warning),
-    IfError(
-        Patch(
-            'Training Requests',
-            galPending.Selected,
-            {
-                'Request Status': 'Request Status (Training Requests)'.Rejected,
-                'Decision Date': Now(),
-                'Decision Comments': txtComments.Text
-            }
-        );
-        Notify("Rejected", NotificationType.Success);
-        Reset(txtComments),
-        Notify("Could not reject: " & FirstError.Message, NotificationType.Error)
-    )
-)
-```
+### Why there is no Approve button here
 
-### Two approval channels, one source of truth
+A `Patch` from this screen would be a second way to decide a request, next to the approval the flow
+has already sent to Outlook and Teams. Two channels writing the same decision cannot be made
+consistent:
 
-Managers can decide either in this screen or in Outlook/Teams (the flow's approval). The flow
-**re-reads the row** before writing its outcome and skips the update if the status is no longer
-`Submitted` (see `flow/approval-flow.md`). A decision made in the app therefore can't be
-overwritten when the stale email approval is answered later.
+- a `Patch` skips the second approval that a high-cost course requires,
+- the requester is never emailed, because the email is sent by the flow,
+- the approval left open in Outlook still has to end somehow, and whatever it ends with competes
+  with the decision already on the row.
+
+So there is one channel. **Review and respond** opens the approval the flow created, and the
+approver's answer travels the same path whether they got there from this app, from Outlook, or
+from Teams. The row itself is read-only to managers.
+
+The seeded Submitted rows have no approval behind them, so their Review button is disabled.
 
 ---
 
 ## Publish & share
 
 **File → Save → Publish.** Then share the app with your test users. Sharing a canvas app doesn't
-grant data access by itself. Users also need one of the three security roles. The share dialog
-prompts you to assign roles for the Dataverse tables.
+grant data access by itself. Users also need a security role **and** the *Training - Read Decision
+Fields* column security profile, or the status column will be blank for them.

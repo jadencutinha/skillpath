@@ -1,6 +1,11 @@
 // Create a blank "_Measures" table (Enter data → one empty column → delete it after) to hold these.
 // Status is filtered on the label column ("Request Status" = jc_requeststatusname). Dataverse
 // loads choices as numbers, and the numbers depend on your publisher prefix.
+//
+// Status vocabulary used below:
+//   decided  = an approver answered: Approved, Rejected, or Completed (approved, then finished)
+//   pending  = Submitted
+//   closed without a decision = Withdrawn, Expired, Error
 
 Total Requests =
 COUNTROWS ( 'Training Request' )
@@ -18,19 +23,34 @@ CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Rejected" )
 Pending Requests =
 CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Submitted" )
 
+Expired Requests =
+// Nobody answered within the approval window. A rising number means approvers need chasing.
+CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Expired" )
+
+Withdrawn Requests =
+CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Withdrawn" )
+
+Completed Requests =
+CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Completed" )
+
 Decided Requests =
 [Approved Requests] + [Rejected Requests]
 
 Approval Rate =
-// Denominator is decided requests only. Drafts and pending requests would make the rate
-// look lower than it really is. DIVIDE returns BLANK instead of an error when nothing is decided.
+// Denominator is decided requests only. Drafts, pending, withdrawn, and expired requests were
+// never answered, so including them would make the rate look lower than it really is.
+// DIVIDE returns BLANK instead of an error when nothing is decided.
 DIVIDE ( [Approved Requests], [Decided Requests] )
 
+Completion Rate =
+// Of the training that was approved, how much has been reported as finished.
+DIVIDE ( [Completed Requests], [Approved Requests] )
+
 Approved Spend =
-// Uses Course Cost captured on the request (price at request time). The
-// relationship-based version from the notes also works:
+// Uses Course Cost captured on the request (the catalog price when it was submitted, stamped
+// by the approval flow). The relationship-based alternative
 //   SUMX ( 'Training Request', RELATED ( 'Training Course'[Cost] ) )
-// but it iterates row by row and uses today's catalog price, not the price when requested.
+// iterates row by row and uses today's catalog price, not the price that was approved.
 CALCULATE (
     SUM ( 'Training Request'[Course Cost] ),
     'Training Request'[Request Status] IN { "Approved", "Completed" }
@@ -42,6 +62,7 @@ CALCULATE ( SUM ( 'Training Request'[Course Cost] ), 'Training Request'[Request 
 Avg Days to Decision =
 // Hours / 24 instead of DATEDIFF(..., DAY), which only counts midnight crossings.
 // A same-day decision is ~0.2 days, not 0.
+// Decision Date is set only for Approved and Rejected, so the blank check is the status filter.
 AVERAGEX (
     FILTER (
         'Training Request',

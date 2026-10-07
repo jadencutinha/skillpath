@@ -1,0 +1,97 @@
+# Builds a MANAGED solution from the source in src/, runs the solution checker on it, and
+# imports it into a target environment with that environment's deployment settings.
+# Run it manually from the Actions tab once src/ holds an exported solution.
+#
+# Setup, once per target (test, prod):
+#   1. GitHub → Settings → Environments → New environment, named `test` / `prod`.
+#      For prod, add "Required reviewers" so a deploy waits for approval.
+#   2. Add these as ENVIRONMENT secrets (not repo secrets), so each target has its own:
+#        PP_ENVIRONMENT_URL  https://<org>.crm.dynamics.com
+#        PP_TENANT_ID        Entra tenant ID
+#        PP_APP_ID           App registration (client) ID
+#        PP_CLIENT_SECRET    App registration secret
+#      The app must be an Application user in the target with the System Administrator role
+#      (importing a solution that contains security roles and flows requires it).
+#   3. Commit deploy/settings.<target>.json (see deploy/README.md).
+name: Deploy solution
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target environment
+        type: choice
+        options: [test, prod]
+        default: test
+      solution:
+        description: Solution unique name
+        default: TrainingRequests
+
+permissions:
+  contents: read
+
+concurrency:
+  # One deploy per target at a time; a second run waits instead of importing over the first.
+  group: deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    env:
+      SOLUTION: ${{ inputs.solution }}
+      SETTINGS: deploy/settings.${{ inputs.target }}.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that there is something to deploy
+        run: |
+          if [ ! -f src/Other/Solution.xml ]; then
+            echo "::error::src/ has no unpacked solution. Run the 'Export solution' workflow and merge its PR first."
+            exit 1
+          fi
+          if [ ! -f "$SETTINGS" ]; then
+            echo "::error::$SETTINGS is missing. Create it with scripts/create-deployment-settings.sh (see deploy/README.md)."
+            exit 1
+          fi
+          python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$SETTINGS"
+
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Pack managed solution from source
+        uses: microsoft/powerplatform-actions/pack-solution@v1
+        with:
+          solution-folder: src
+          solution-file: out/${{ env.SOLUTION }}_managed.zip
+          solution-type: Managed
+          process-canvas-apps: true
+
+      # Static analysis of the apps and flows. A failed check stops the job before anything is imported.
+      - name: Solution checker
+        uses: microsoft/powerplatform-actions/check-solution@v1
+        with:
+          environment-url: ${{ secrets.PP_ENVIRONMENT_URL }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          path: out/${{ env.SOLUTION }}_managed.zip
+
+      - name: Import into ${{ inputs.target }}
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ secrets.PP_ENVIRONMENT_URL }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          solution-file: out/${{ env.SOLUTION }}_managed.zip
+          use-deployment-settings-file: true
+          deployment-settings-file: ${{ env.SETTINGS }}
+          run-asynchronously: true
+          publish-changes: true
+
+      - name: Keep the deployed package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SOLUTION }}-managed-${{ inputs.target }}-${{ github.run_number }}
+          path: out/${{ env.SOLUTION }}_managed.zip

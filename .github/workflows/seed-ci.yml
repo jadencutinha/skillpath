@@ -1,0 +1,30 @@
+name: Seed CI
+
+on:
+  push:
+    paths: ["dataverse/**", "ruff.toml", ".github/workflows/seed-ci.yml"]
+  pull_request:
+    paths: ["dataverse/**", "ruff.toml", ".github/workflows/seed-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dataverse
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: dataverse/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      # Offline: validates the seed CSVs and tests the script against a fake Web API.
+      - run: python seed_dataverse.py --check
+      - run: pytest -q

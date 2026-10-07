@@ -3,7 +3,7 @@
   "info": {
     "title": "Training Estimate",
     "description": "Cost-per-hour and budget tier for training requests.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "host": "training-estimate-api.onrender.com",
   "basePath": "/",
@@ -31,6 +31,8 @@
             "required": true,
             "type": "number",
             "format": "double",
+            "minimum": 0,
+            "maximum": 1000000,
             "x-ms-summary": "Cost",
             "description": "Course cost in USD."
           },
@@ -40,8 +42,11 @@
             "required": true,
             "type": "integer",
             "format": "int32",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 10000,
             "x-ms-summary": "Hours",
-            "description": "Course length in hours (must be greater than 0)."
+            "description": "Course length in hours."
           }
         ],
         "responses": {
@@ -50,7 +55,8 @@
             "schema": { "$ref": "#/definitions/Estimate" }
           },
           "401": { "description": "Invalid or missing API key" },
-          "422": { "description": "Invalid parameters" }
+          "422": { "description": "Invalid parameters" },
+          "503": { "description": "API key not configured on the server" }
         }
       }
     },
@@ -60,6 +66,7 @@
         "summary": "Health check",
         "description": "Returns ok when the service is up.",
         "x-ms-visibility": "internal",
+        "security": [],
         "parameters": [],
         "responses": {
           "200": {
@@ -76,13 +83,28 @@
   "definitions": {
     "Estimate": {
       "type": "object",
+      "required": [
+        "cost",
+        "hours",
+        "cost_per_hour",
+        "tier",
+        "premium_rate",
+        "requires_second_approval",
+        "high_cost_threshold"
+      ],
       "properties": {
         "cost": { "type": "number", "format": "double", "x-ms-summary": "Cost" },
         "hours": { "type": "integer", "format": "int32", "x-ms-summary": "Hours" },
         "cost_per_hour": { "type": "number", "format": "double", "x-ms-summary": "Cost per hour" },
         "tier": { "type": "string", "enum": ["standard", "high"], "x-ms-summary": "Tier" },
         "premium_rate": { "type": "boolean", "x-ms-summary": "Premium rate" },
-        "requires_second_approval": { "type": "boolean", "x-ms-summary": "Requires second approval" }
+        "requires_second_approval": { "type": "boolean", "x-ms-summary": "Requires second approval" },
+        "high_cost_threshold": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "High cost threshold",
+          "description": "Costs above this value are tier \"high\"."
+        }
       }
     }
   }

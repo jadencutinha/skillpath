@@ -12,6 +12,9 @@ out/
 .env
 *.local.json
 
+# Fresh template written next to an existing deployment settings file
+deploy/settings.*.new.json
+
 # OS / editor
 .DS_Store
 .vscode/*

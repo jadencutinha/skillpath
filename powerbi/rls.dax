@@ -1,0 +1,23 @@
+// Row-level security for the report. See model.md → "5. Row-level security" for why the
+// Dataverse security roles do not apply here and how to assign people to these roles.
+
+// ---------- 1. Calculated column on the Requester table ----------
+// Table tools → New column. For each user, the chain of managers above them:
+//   "ceo-id|director-id|manager-id|user-id"
+// This has to be a calculated column (not a measure): security filters are evaluated row by row.
+Hierarchy Path =
+PATH ( Requester[User ID], Requester[Manager ID] )
+
+// ---------- 2. Role: "Own and team requests" ----------
+// Modeling → Manage roles → New. Table: Requester. Switch to the DAX editor and paste:
+VAR Me =
+    LOOKUPVALUE ( Requester[User ID], Requester[UPN], USERPRINCIPALNAME () )
+RETURN
+    NOT ISBLANK ( Me ) && PATHCONTAINS ( Requester[Hierarchy Path], Me )
+// A row of Requester is visible when the signed-in user appears anywhere in its path: the user's
+// own row, their direct reports, and everyone below those. The filter flows through the
+// Requester → Training Request relationship, so the viewer sees exactly those people's requests.
+// Someone who isn't a Dataverse user matches nothing and sees an empty report.
+
+// ---------- 3. Role: "All requests" ----------
+// Modeling → Manage roles → New. Add no filter to any table. For Training Admins.

@@ -1,7 +1,8 @@
 # Training Estimate custom connector
 
-FastAPI generates **OpenAPI 3.0**, but custom connectors expect **OpenAPI 2.0 (Swagger)**. So this
-folder contains a hand-written Swagger 2.0 definition that matches `api/app/main.py`.
+FastAPI generates **OpenAPI 3**, but custom connectors expect **OpenAPI 2.0 (Swagger)**. So this
+folder contains a hand-written Swagger 2.0 definition that matches `api/app/main.py`. The API's
+contract tests (`api/tests/test_connector_contract.py`) fail in CI if the two drift apart.
 
 | File | Purpose |
 |------|---------|
@@ -30,20 +31,16 @@ pac connector create \
   --solution-unique-name TrainingRequests
 ```
 
-**Option B, wizard (what the notes describe).** Solution → **New → Automation → Custom connector**
-→ **Create from blank**, name it `Training Estimate`.
+**Option B, wizard.** Solution → **New → Automation → Custom connector** → **Create from blank**,
+name it `Training Estimate`. Turn on the **Swagger editor** toggle and paste
+`apiDefinition.swagger.json`. That brings in the parameter bounds and all seven response fields
+exactly as the tests check them.
 
-1. **General:** scheme HTTPS, host = your Render host, base URL `/`.
-2. **Security:** API Key, label `API Key`, parameter name `X-API-Key`, location Header.
-3. **Definition:** New action, summary `Get cost estimate`, operation ID `GetEstimate`.
-   **Request → Import from sample:** GET `https://<host>/estimate?cost=2495&hours=24`.
-   **Response → Add default response:** paste the JSON from `curl` (see `api/README.md`).
-   Then edit `cost` and `hours` so both are **required**.
-4. **Code:** leave off.
-5. **Test:** Create connection (paste the Render `API_KEY`), run with `cost=2495, hours=24`, and
-   confirm `tier = high`.
+Then, on the **Test** tab: create a connection (paste the Render `API_KEY`), run with
+`cost=2495, hours=24`, and confirm `tier = high` and `high_cost_threshold = 1000`.
 
-Alternatively, turn on the **Swagger editor** toggle and paste `apiDefinition.swagger.json`.
+Updating later: after changing the API, edit `apiDefinition.swagger.json` until the contract tests
+pass, then `pac connector update` with the same three arguments plus `--connector-id`.
 
 ## 3. Point the host at the environment variable
 
@@ -55,10 +52,14 @@ without editing the connector.
   URL template to `https://@environmentVariables("jc_EstimateApiHost")`.
 
 Check the **Test** tab again after adding the policy. If your tenant rejects the policy template,
-hard-code the host and put the environment-variable approach in the README as a known limitation.
+hard-code the host for now and record it under *Known limitations* in the root README.
 
 ## 4. Using it
 
 - **Canvas app:** add `Training Estimate` as a data source, then call
   `TrainingEstimate.GetEstimate(cost, hours)`. See `powerapps/canvas-app.md`.
-- **Flow:** use the `Get cost estimate` action and branch on `tier`. See `flow/approval-flow.md`.
+- **Flow:** use the `Get cost estimate` action and read `requires_second_approval`. See
+  `flow/approval-flow.md`.
+
+The API key lives in the **connection**, not in the app or the flow. Whoever creates the connection
+pastes the key once, and it is not shown again.

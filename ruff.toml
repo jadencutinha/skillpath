@@ -1,0 +1,10 @@
+line-length = 120
+target-version = "py312"
+# First-party roots, so imports sort the same from the repo root and from each folder.
+src = ["api", "dataverse"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+
+[lint.per-file-ignores]
+"**/tests/*" = ["S101", "S105", "S106"]

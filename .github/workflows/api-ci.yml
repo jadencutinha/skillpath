@@ -2,9 +2,12 @@ name: API CI
 
 on:
   push:
-    paths: ["api/**", ".github/workflows/api-ci.yml"]
+    paths: ["api/**", "connector/apiDefinition.swagger.json", "ruff.toml", ".github/workflows/api-ci.yml"]
   pull_request:
-    paths: ["api/**"]
+    paths: ["api/**", "connector/apiDefinition.swagger.json", "ruff.toml", ".github/workflows/api-ci.yml"]
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -20,4 +23,8 @@ jobs:
           cache: pip
           cache-dependency-path: api/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      # Includes the contract tests that compare the connector's Swagger file with the API,
+      # which is why a change to the Swagger file also triggers this workflow.
       - run: pytest -q

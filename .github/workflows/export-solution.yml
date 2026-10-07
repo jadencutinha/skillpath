@@ -41,12 +41,25 @@ jobs:
           solution-name: ${{ env.SOLUTION }}
           solution-output-file: out/${{ env.SOLUTION }}.zip
 
+      # Exported alongside the unmanaged zip (same folder, _managed suffix) so that the source
+      # in src/ can later be packed as a managed solution by the deploy workflow.
+      - name: Export managed solution
+        uses: microsoft/powerplatform-actions/export-solution@v1
+        with:
+          environment-url: ${{ secrets.PP_ENVIRONMENT_URL }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          solution-name: ${{ env.SOLUTION }}
+          managed: true
+          solution-output-file: out/${{ env.SOLUTION }}_managed.zip
+
       - name: Unpack into src/
         uses: microsoft/powerplatform-actions/unpack-solution@v1
         with:
           solution-file: out/${{ env.SOLUTION }}.zip
           solution-folder: src
-          solution-type: Unmanaged
+          solution-type: Both
           overwrite-files: true
           process-canvas-apps: true
 

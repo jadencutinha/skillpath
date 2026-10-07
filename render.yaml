@@ -11,5 +11,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10
+      # The API refuses to serve estimates without a key, so this must stay.
       - key: API_KEY
         generateValue: true
+      # Costs above this need a second approval. Keep the Dataverse business rule in step
+      # (dataverse/schema.md, "The $1,000 threshold").
+      - key: HIGH_COST_THRESHOLD
+        value: "1000"

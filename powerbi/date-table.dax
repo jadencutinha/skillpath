@@ -1,11 +1,20 @@
 // Modeling → New table. Then Table tools → Mark as date table → column [Date].
+// The range follows the data: whole years from the first submission to the later of the last
+// activity and today. A hard-coded range silently drops every request outside it.
 Date =
-ADDCOLUMNS (
-    CALENDAR ( DATE ( 2026, 1, 1 ), DATE ( 2027, 12, 31 ) ),
-    "Year", YEAR ( [Date] ),
-    "Quarter", "Q" & QUARTER ( [Date] ),
-    "Month", FORMAT ( [Date], "MMM yyyy" ),
-    "MonthNum", YEAR ( [Date] ) * 100 + MONTH ( [Date] ),
-    "Weekday", FORMAT ( [Date], "ddd" )
-)
+VAR FirstDate = COALESCE ( MIN ( 'Training Request'[Submitted Date] ), TODAY () )
+VAR LastDate =
+    MAX (
+        MAX ( MAX ( 'Training Request'[Submitted Date] ), MAX ( 'Training Request'[Decision Day] ) ),
+        TODAY ()
+    )
+RETURN
+    ADDCOLUMNS (
+        CALENDAR ( DATE ( YEAR ( FirstDate ), 1, 1 ), DATE ( YEAR ( LastDate ), 12, 31 ) ),
+        "Year", YEAR ( [Date] ),
+        "Quarter", "Q" & QUARTER ( [Date] ),
+        "Month", FORMAT ( [Date], "MMM yyyy" ),
+        "MonthNum", YEAR ( [Date] ) * 100 + MONTH ( [Date] ),
+        "Weekday", FORMAT ( [Date], "ddd" )
+    )
 // Column tools: select Date[Month] → Sort by column → MonthNum, so months sort chronologically, not alphabetically.
