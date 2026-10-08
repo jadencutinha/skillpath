@@ -1,0 +1,12 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+
+ref table 'Training Request'
+ref table 'Training Course'
+ref table Requester
+ref table Date
+
+ref role 'Own and team requests'
+ref role 'All requests'

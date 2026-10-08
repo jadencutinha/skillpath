@@ -17,6 +17,11 @@ steps depend on names created in earlier ones.
 - [ ] Power BI Desktop: Windows VM or Cloud PC (see `powerbi/model.md`).
 - [ ] `pac auth create --environment https://<org>.crm.dynamics.com`
 
+> **Shortcut for steps 1 to 3.** `python dataverse/create_schema.py --env <url>` creates the
+> publisher, solution, tables, columns, column security settings, views, and column security
+> profiles. After it, the only manual items left in steps 1 to 3 are the business rule, the three
+> security roles, and profile membership. See [`dataverse/schema.md`](../dataverse/schema.md).
+
 ## 1. Solution
 
 - [ ] make.powerapps.com → select your dev environment → **Solutions → New solution**
@@ -66,8 +71,13 @@ Requests can't leave Draft until the approval flow exists, so build the flows be
 
 ## 6. Canvas app: [`powerapps/canvas-app.md`](../powerapps/canvas-app.md)
 
-- [ ] App.Formulas (`fxMe`, `fxIsManager`, `fxFallbackThreshold`)
-- [ ] scrHome, scrNewRequest, scrCatalog, scrApprovals
+The screens are ready to paste: follow [`powerapps/source/README.md`](../powerapps/source/README.md).
+Open `powerapps/source/preview.html` in a browser first to see the design.
+
+- [ ] Create the app (Tablet), add the data sources
+- [ ] Paste `App.Formulas.fx` into App.Formulas, set StartScreen to `scrHome`
+- [ ] Paste scrHome, scrCatalog, scrNewRequest, scrApprovals
+- [ ] Clear any formula errors (the source README lists the likely ones)
 - [ ] Save + Publish, share with the test user
 
 ## 7. Model-driven app: [`powerapps/model-driven-app.md`](../powerapps/model-driven-app.md)
@@ -81,8 +91,9 @@ Requests can't leave Draft until the approval flow exists, so build the flows be
 
 ## 9. Power BI: [`powerbi/model.md`](../powerbi/model.md)
 
-- [ ] Parameter, three queries, Date table, four relationships, measures, visuals
-- [ ] Row-level security: Hierarchy Path column, two roles, **View as** the test user
+- [ ] Open `powerbi/TrainingRequests.pbip`, set the two parameters, refresh
+- [ ] Lay out the visuals (model.md, section 3)
+- [ ] Row-level security is already in the project: **View as** the test user to confirm it
 - [ ] Performance Analyzer numbers → README
 - [ ] Save `powerbi/TrainingRequests.pbix`
 

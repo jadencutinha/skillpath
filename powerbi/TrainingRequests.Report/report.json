@@ -1,0 +1,16 @@
+{
+  "config": "{\"version\": \"5.37\", \"themeCollection\": {}}",
+  "layoutOptimization": 0,
+  "sections": [
+    {
+      "name": "ReportSection",
+      "displayName": "Overview",
+      "displayOption": 1,
+      "width": 1280,
+      "height": 720,
+      "config": "{}",
+      "filters": "[]",
+      "visualContainers": []
+    }
+  ]
+}

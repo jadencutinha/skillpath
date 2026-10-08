@@ -1,0 +1,5 @@
+/// Your environment host, without https://. Set it under Transform data > Manage parameters.
+expression DataverseHost = "<org>.crm.dynamics.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+/// Hours to add to Dataverse's UTC timestamps so requests land on the right calendar day.
+expression ReportingUtcOffsetHours = -5 meta [IsParameterQuery = true, Type = "Number", IsParameterQueryRequired = true]

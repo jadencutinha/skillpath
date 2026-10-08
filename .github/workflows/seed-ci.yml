@@ -25,6 +25,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      # Offline: validates the seed CSVs and tests the script against a fake Web API.
+      # Offline: validates the seed CSVs and tests both scripts against a fake Web API.
       - run: python seed_dataverse.py --check
+      - run: python create_schema.py --plan
       - run: pytest -q

@@ -1,0 +1,2 @@
+role 'All requests'
+	modelPermission: read

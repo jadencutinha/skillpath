@@ -5,6 +5,29 @@
 > directly to Dataverse and create a model from scratch, so Desktop is the path of least
 > resistance. Save the result as `powerbi/TrainingRequests.pbix` and commit it.
 
+## Start from the project, not from scratch
+
+`TrainingRequests.pbip` is a Power BI Project with the whole model already in it: the three
+queries, the Date table, the four relationships, all sixteen measures with their formats, the
+hierarchy column, and both row-level security roles. It is generated from the `.pq` and `.dax`
+files below by [`build_pbip.py`](build_pbip.py), so those stay the single source.
+
+1. Open `TrainingRequests.pbip` in Power BI Desktop. (If Desktop doesn't offer `.pbip`, turn on
+   **File → Options → Preview features → Power BI Project (.pbip) save option**.)
+2. **Transform data → Manage parameters**: set `DataverseHost` to your environment host, without
+   `https://`, and `ReportingUtcOffsetHours` to your reporting time zone.
+3. **Refresh**, and sign in to Dataverse when asked.
+4. Lay out the visuals from section 3. Sections 1 and 2 describe what the project already contains;
+   use them only if you'd rather build the model by hand.
+
+The project has been checked for consistency with the source files, not opened in Desktop yet. If
+Desktop reports a problem in one file, it names the file and line; the rest of this page is the
+by-hand route for that piece.
+
+After editing a measure or query, change the `.dax` / `.pq` file and run
+`python powerbi/build_pbip.py`. Changes made inside Desktop are saved into the project folders and
+would be overwritten by the next build, so move them back into the source files.
+
 Files in this folder:
 
 | File | Contents |
@@ -13,6 +36,8 @@ Files in this folder:
 | `date-table.dax` | The Date table |
 | `measures.dax` | All measures |
 | `rls.dax` | The hierarchy column and role filters for row-level security |
+| `build_pbip.py` | Builds the project from the four files above |
+| `TrainingRequests.pbip`, `.SemanticModel/`, `.Report/` | The generated project |
 
 ## 1. Connect
 

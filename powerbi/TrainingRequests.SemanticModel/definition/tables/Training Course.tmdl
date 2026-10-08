@@ -1,0 +1,61 @@
+table 'Training Course'
+
+	column 'Course ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Course ID
+
+	column Course
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Course
+
+	column Provider
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Provider
+
+	column Category
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Category
+
+	column Cost
+		dataType: decimal
+		formatString: \$#,0;(\$#,0);\$#,0
+		summarizeBy: none
+		sourceColumn: Cost
+
+	column Hours
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Hours
+
+	column Active
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: Active
+
+	partition 'Training Course' = m
+		mode: import
+		source = ```
+			let
+			    Source  = CommonDataService.Database(DataverseHost),
+			    Courses = Source{[Schema = "dbo", Item = "jc_trainingcourse"]}[Data],
+			    Kept    = Table.SelectColumns(Courses, {
+			                  "jc_trainingcourseid", "jc_name", "jc_provider",
+			                  "jc_categoryname", "jc_cost", "jc_hours", "jc_active"
+			              }),
+			    Renamed = Table.RenameColumns(Kept, {
+			                  {"jc_trainingcourseid", "Course ID"}, {"jc_name", "Course"},
+			                  {"jc_provider", "Provider"}, {"jc_categoryname", "Category"},
+			                  {"jc_cost", "Cost"}, {"jc_hours", "Hours"}, {"jc_active", "Active"}
+			              }),
+			    Typed   = Table.TransformColumnTypes(Renamed, {
+			                  {"Course ID", type text}, {"Cost", Currency.Type}, {"Hours", Int64.Type}
+			              })
+			in
+			    Typed
+			```

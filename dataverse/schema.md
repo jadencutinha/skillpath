@@ -2,6 +2,28 @@
 
 Solution: **TrainingRequests** · Publisher prefix: **jc**
 
+## Create it with one command
+
+```bash
+pip install -r dataverse/requirements.txt
+python dataverse/create_schema.py --plan                                   # see what it will create
+python dataverse/create_schema.py --env https://<org>.crm.dynamics.com     # create it
+```
+
+[`create_schema.py`](create_schema.py) creates the publisher, the solution, both tables, every
+column below (with column security switched on where this page says so), the four views, and the
+two column security profiles with their permissions. It skips anything that already exists, so it is safe to
+re-run after a failure.
+
+It has been tested against a simulated Web API, not yet against a live environment. If a call is
+rejected, the error names the component; create that one by hand from the tables below and run
+the script again to continue.
+
+Still done by hand afterwards: the [business rule](#business-rule-justification-required-over-1000),
+and the security roles and profile membership in [`security-roles.md`](security-roles.md).
+
+## Or build it by hand
+
 When you create each column, check **Advanced options → Schema name** so the logical names match
 the ones below. The seed script (`seed_dataverse.py`), the flow expressions, and the Power BI
 queries all use these names.

@@ -1,0 +1,16 @@
+relationship RequestCourse
+	fromColumn: 'Training Request'.'Course ID'
+	toColumn: 'Training Course'.'Course ID'
+
+relationship RequestRequester
+	fromColumn: 'Training Request'.'Requester ID'
+	toColumn: Requester.'User ID'
+
+relationship RequestSubmittedDate
+	fromColumn: 'Training Request'.'Submitted Date'
+	toColumn: Date.Date
+
+relationship RequestDecisionDay
+	isActive: false
+	fromColumn: 'Training Request'.'Decision Day'
+	toColumn: Date.Date

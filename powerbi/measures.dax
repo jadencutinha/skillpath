@@ -1,4 +1,6 @@
-// Create a blank "_Measures" table (Enter data → one empty column → delete it after) to hold these.
+// The generated project (TrainingRequests.pbip) puts these on the Training Request table.
+// Building by hand: create a blank "_Measures" table (Enter data → one empty column → delete it
+// after) to hold them.
 // Status is filtered on the label column ("Request Status" = jc_requeststatusname). Dataverse
 // loads choices as numbers, and the numbers depend on your publisher prefix.
 //

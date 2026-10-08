@@ -1,0 +1,53 @@
+table Requester
+
+	column 'User ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: User ID
+
+	column Requester
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Requester
+
+	column UPN
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: UPN
+
+	column 'Manager ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Manager ID
+
+	column 'Hierarchy Path' = ```
+			PATH ( Requester[User ID], Requester[Manager ID] )
+			```
+		dataType: string
+		isHidden
+		summarizeBy: none
+
+	partition Requester = m
+		mode: import
+		source = ```
+			// Every user, including disabled ones and people who never made a request: the manager
+			// hierarchy in rls.dax needs each manager to exist as a row.
+			let
+			    Source  = CommonDataService.Database(DataverseHost),
+			    Users   = Source{[Schema = "dbo", Item = "systemuser"]}[Data],
+			    Kept    = Table.SelectColumns(Users, {
+			                  "systemuserid", "fullname", "domainname", "parentsystemuserid"
+			              }),
+			    Renamed = Table.RenameColumns(Kept, {
+			                  {"systemuserid", "User ID"}, {"fullname", "Requester"},
+			                  {"domainname", "UPN"}, {"parentsystemuserid", "Manager ID"}
+			              }),
+			    Typed   = Table.TransformColumnTypes(Renamed, {
+			                  {"User ID", type text}, {"Manager ID", type text}, {"UPN", type text}
+			              })
+			in
+			    Typed
+			```

@@ -1,10 +1,12 @@
 line-length = 120
 target-version = "py312"
 # First-party roots, so imports sort the same from the repo root and from each folder.
-src = ["api", "dataverse"]
+src = ["api", "dataverse", "powerapps/source", "powerbi"]
 
 [lint]
 select = ["E", "F", "W", "I", "B", "UP", "S"]
 
 [lint.per-file-ignores]
 "**/tests/*" = ["S101", "S105", "S106"]
+# Long lines here are SVG paths, Power Fx and CSS held as data.
+"powerapps/source/generate.py" = ["E501"]

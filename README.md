@@ -19,6 +19,11 @@ Who can see a request is enforced by **Dataverse security roles**, and who can d
 **column-level security**, not by app logic. Everything ships as one solution, versioned in Git as
 unpacked source.
 
+![Design preview of the home screen](docs/screenshots/design-home.png)
+
+*Design preview, rendered from the canvas app source with sample data. The app itself is built by
+pasting that source into Power Apps Studio; see [`powerapps/source/`](powerapps/source).*
+
 <!-- Uncomment once the file exists (docs/BUILD_GUIDE.md step 11):
 ![Demo](docs/screenshots/demo.gif)
 -->
@@ -32,8 +37,10 @@ Platform components are built in the maker portal by following
 | Part | State |
 |---|---|
 | Estimate API, connector definition, contract tests | ✅ Code, tested in CI |
-| Seed data and seed script | ✅ Code, tested in CI |
-| Dataverse model, security, apps, flows, Power BI model | 📝 Specified in this repo; ⬜ not yet built in an environment |
+| Seed data, seed script, schema-creation script | ✅ Code, tested in CI against a simulated Web API; ⬜ not yet run against a live environment |
+| Canvas app screens | ✅ Written as pasteable Power Apps YAML, structure-checked in CI; ⬜ not yet pasted into Studio |
+| Power BI model | ✅ Generated as a Power BI project (queries, relationships, measures, security roles), consistency-checked in CI; ⬜ not yet opened in Desktop, visuals not laid out |
+| Dataverse model, security, model-driven app, flows | 📝 Specified in this repo; ⬜ not yet built in an environment |
 | `src/` (unpacked solution), `.pbix`, screenshots | ⬜ Produced by the build |
 
 ## Architecture
@@ -158,14 +165,20 @@ hierarchy ([`powerbi/model.md`](powerbi/model.md#5-row-level-security)).
 
 ## Apps
 
-**Canvas app: Training Portal** ([spec](powerapps/canvas-app.md))
+**Canvas app: Training Portal** ([how it works](powerapps/canvas-app.md) · [pasteable source](powerapps/source))
 
 | Screen | What it does |
 |---|---|
-| My Requests | Delegable gallery of the user's own requests, color-coded by status, with the actions valid for each status: edit or discard a draft, withdraw, mark completed, request again |
-| New Request / Edit Draft | One form for both. Client-side validation, *Save as draft*, and a live cost-per-hour / tier estimate from the custom connector, wrapped in `IfError` so an API outage doesn't block submission |
-| Course Catalog | Active courses with delegable `StartsWith` search + category filter; "Request" preselects the course |
-| Waiting on me | The approvals currently assigned to the signed-in user, oldest first. **Review and respond** opens the approval itself |
+| My requests | Summary numbers, a filterable list of the user's own requests, and a detail panel with a four-step progress tracker and the actions valid for that status: edit or discard a draft, withdraw, mark completed, request again |
+| Course catalog | Card grid of active courses with delegable `StartsWith` search and category chips; "Request" starts a request for that course |
+| New request / Edit draft | Title and justification, saved with `Patch` so only the four requester columns are ever written. A side panel shows cost per hour, tier, and the approval route, from the custom connector wrapped in `IfError` so an API outage doesn't block submission |
+| Waiting on me | The approvals currently assigned to the signed-in user, oldest first, with an age tag. **Review and respond** opens the approval itself |
+
+The screens are generated from one description ([`generate.py`](powerapps/source/generate.py)) as
+Power Apps YAML and as an HTML preview, with a shared theme and inline SVG icons. More previews:
+[catalog](docs/screenshots/design-catalog.png) ·
+[new request](docs/screenshots/design-new-request.png) ·
+[approvals](docs/screenshots/design-approvals.png).
 
 **Model-driven app: Training Admin** ([spec](powerapps/model-driven-app.md)): catalog
 management with *Active Courses*, *Pending Requests*, and *Needs Attention* views, and a course form
@@ -279,7 +292,8 @@ Spec, queries, and measures are in [`powerbi/`](powerbi).
   values and connection IDs that differ between environments.
 - **CI:**
   - [`api-ci.yml`](.github/workflows/api-ci.yml) and [`seed-ci.yml`](.github/workflows/seed-ci.yml)
-    lint and test the Python on every push.
+    lint and test the Python on every push; [`app-source-ci.yml`](.github/workflows/app-source-ci.yml)
+    checks the canvas app source.
   - [`export-solution.yml`](.github/workflows/export-solution.yml) uses Microsoft's Power Platform
     Actions to export and unpack the solution and open a PR with the diff.
   - [`deploy-solution.yml`](.github/workflows/deploy-solution.yml) packs the managed solution from
@@ -320,15 +334,15 @@ Spec, queries, and measures are in [`powerbi/`](powerbi).
 ```
 api/                 FastAPI service + tests (including connector contract tests)
 connector/           Swagger 2.0 definition + properties for the custom connector
-dataverse/           Schema, security, seed CSVs, Web API seed script + tests
+dataverse/           Schema, security, schema-creation script, seed CSVs + seed script, tests
 deploy/              Deployment settings (environment variable values, connections) per target
 docs/                Build guide, screenshots
 flow/                Approval, commands, and reminders flow specs (actions, expressions, test plans)
-powerapps/           Canvas app (Power Fx) and model-driven app specs
-powerbi/             Power Query, Date table, DAX measures, row-level security, model guide
+powerapps/           Canvas app source (pasteable YAML + generator + preview) and app specs
+powerbi/             Power Query, DAX, row-level security, model guide, generated Power BI project (.pbip)
 scripts/             pac export / pack / deployment settings
 src/                 Unpacked solution (generated by scripts/export-solution.sh)
-.github/workflows/   API CI, seed CI, solution export, solution deploy
+.github/workflows/   API CI, seed CI, app source CI, solution export, solution deploy
 ```
 
 ## Reproduce it

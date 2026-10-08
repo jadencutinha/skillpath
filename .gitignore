@@ -20,5 +20,7 @@ deploy/settings.*.new.json
 .vscode/*
 !.vscode/extensions.json
 
-# Power BI temp
+# Power BI temp and per-user project state
 *.pbix.bak
+**/.pbi/localSettings.json
+**/.pbi/cache.abf

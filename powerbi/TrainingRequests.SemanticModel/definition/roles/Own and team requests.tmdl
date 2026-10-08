@@ -1,0 +1,9 @@
+role 'Own and team requests'
+	modelPermission: read
+
+	tablePermission Requester = ```
+			VAR Me =
+			    LOOKUPVALUE ( Requester[User ID], Requester[UPN], USERPRINCIPALNAME () )
+			RETURN
+			    NOT ISBLANK ( Me ) && PATHCONTAINS ( Requester[Hierarchy Path], Me )
+			```

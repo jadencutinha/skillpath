@@ -1,0 +1,232 @@
+table 'Training Request'
+
+	measure 'Total Requests' = ```
+			COUNTROWS ( 'Training Request' )
+			```
+		formatString: #,0
+
+	measure 'Approved Requests' = ```
+			// Completed requests were approved first, so they count as approvals.
+			CALCULATE (
+			    [Total Requests],
+			    'Training Request'[Request Status] IN { "Approved", "Completed" }
+			)
+			```
+		formatString: #,0
+
+	measure 'Rejected Requests' = ```
+			CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Rejected" )
+			```
+		formatString: #,0
+
+	measure 'Pending Requests' = ```
+			CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Submitted" )
+			```
+		formatString: #,0
+
+	measure 'Expired Requests' = ```
+			// Nobody answered within the approval window. A rising number means approvers need chasing.
+			CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Expired" )
+			```
+		formatString: #,0
+
+	measure 'Withdrawn Requests' = ```
+			CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Withdrawn" )
+			```
+		formatString: #,0
+
+	measure 'Completed Requests' = ```
+			CALCULATE ( [Total Requests], 'Training Request'[Request Status] = "Completed" )
+			```
+		formatString: #,0
+
+	measure 'Decided Requests' = ```
+			[Approved Requests] + [Rejected Requests]
+			```
+		formatString: #,0
+
+	measure 'Approval Rate' = ```
+			// Denominator is decided requests only. Drafts, pending, withdrawn, and expired requests were
+			// never answered, so including them would make the rate look lower than it really is.
+			// DIVIDE returns BLANK instead of an error when nothing is decided.
+			DIVIDE ( [Approved Requests], [Decided Requests] )
+			```
+		formatString: 0%
+
+	measure 'Completion Rate' = ```
+			// Of the training that was approved, how much has been reported as finished.
+			DIVIDE ( [Completed Requests], [Approved Requests] )
+			```
+		formatString: 0%
+
+	measure 'Approved Spend' = ```
+			// Uses Course Cost captured on the request (the catalog price when it was submitted, stamped
+			// by the approval flow). The relationship-based alternative
+			//   SUMX ( 'Training Request', RELATED ( 'Training Course'[Cost] ) )
+			// iterates row by row and uses today's catalog price, not the price that was approved.
+			CALCULATE (
+			    SUM ( 'Training Request'[Course Cost] ),
+			    'Training Request'[Request Status] IN { "Approved", "Completed" }
+			)
+			```
+		formatString: \$#,0;(\$#,0);\$#,0
+
+	measure 'Pending Spend' = ```
+			CALCULATE ( SUM ( 'Training Request'[Course Cost] ), 'Training Request'[Request Status] = "Submitted" )
+			```
+		formatString: \$#,0;(\$#,0);\$#,0
+
+	measure 'Avg Days to Decision' = ```
+			// Hours / 24 instead of DATEDIFF(..., DAY), which only counts midnight crossings.
+			// A same-day decision is ~0.2 days, not 0.
+			// Decision Date is set only for Approved and Rejected, so the blank check is the status filter.
+			AVERAGEX (
+			    FILTER (
+			        'Training Request',
+			        NOT ISBLANK ( 'Training Request'[Decision Date] )
+			            && NOT ISBLANK ( 'Training Request'[Submitted On] )
+			    ),
+			    DIVIDE (
+			        DATEDIFF ( 'Training Request'[Submitted On], 'Training Request'[Decision Date], HOUR ),
+			        24
+			    )
+			)
+			```
+		formatString: 0.0
+
+	measure 'Decisions by Decision Date' = ```
+			// Uses the INACTIVE Decision Day → Date relationship, so "decisions made in March" differs
+			// from "requests submitted in March".
+			CALCULATE (
+			    [Decided Requests],
+			    USERELATIONSHIP ( 'Training Request'[Decision Day], 'Date'[Date] )
+			)
+			```
+		formatString: #,0
+
+	measure 'Approval Rate vs Prior Month' = ```
+			VAR CurrentRate = [Approval Rate]
+			VAR PriorRate   = CALCULATE ( [Approval Rate], DATEADD ( 'Date'[Date], -1, MONTH ) )
+			RETURN
+			    IF ( NOT ISBLANK ( PriorRate ), CurrentRate - PriorRate )
+			```
+		formatString: +0%;-0%;0%
+
+	measure 'Oldest Pending (days)' = ```
+			MAXX (
+			    FILTER ( 'Training Request', 'Training Request'[Request Status] = "Submitted" ),
+			    DATEDIFF ( 'Training Request'[Submitted On], NOW (), DAY )
+			)
+			```
+		formatString: #,0
+
+	column 'Request ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Request ID
+
+	column Title
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Title
+
+	column 'Course ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Course ID
+
+	column 'Requester ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Requester ID
+
+	column 'Request Status'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Request Status
+
+	column 'Pending With'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Pending With
+
+	column 'Submitted On'
+		dataType: dateTime
+		formatString: General Date
+		summarizeBy: none
+		sourceColumn: Submitted On
+
+	column 'Decision Date'
+		dataType: dateTime
+		formatString: General Date
+		summarizeBy: none
+		sourceColumn: Decision Date
+
+	column 'Completed On'
+		dataType: dateTime
+		formatString: General Date
+		summarizeBy: none
+		sourceColumn: Completed On
+
+	column 'Course Cost'
+		dataType: decimal
+		formatString: \$#,0;(\$#,0);\$#,0
+		summarizeBy: sum
+		sourceColumn: Course Cost
+
+	column 'Submitted Date'
+		dataType: dateTime
+		formatString: Short Date
+		isHidden
+		summarizeBy: none
+		sourceColumn: Submitted Date
+
+	column 'Decision Day'
+		dataType: dateTime
+		formatString: Short Date
+		isHidden
+		summarizeBy: none
+		sourceColumn: Decision Day
+
+	partition 'Training Request' = m
+		mode: import
+		source = ```
+			let
+			    Source   = CommonDataService.Database(DataverseHost),
+			    Requests = Source{[Schema = "dbo", Item = "jc_trainingrequest"]}[Data],
+			    Kept     = Table.SelectColumns(Requests, {
+			                   "jc_trainingrequestid", "jc_title", "jc_course", "ownerid",
+			                   "jc_requeststatusname",               // choice label (the number is jc_requeststatus)
+			                   "jc_pendingwith",
+			                   "jc_submittedon", "jc_decisiondate", "jc_completedon", "jc_coursecost"
+			               }),
+			    Renamed  = Table.RenameColumns(Kept, {
+			                   {"jc_trainingrequestid", "Request ID"}, {"jc_title", "Title"},
+			                   {"jc_course", "Course ID"}, {"ownerid", "Requester ID"},
+			                   {"jc_requeststatusname", "Request Status"}, {"jc_pendingwith", "Pending With"},
+			                   {"jc_submittedon", "Submitted On"}, {"jc_decisiondate", "Decision Date"},
+			                   {"jc_completedon", "Completed On"}, {"jc_coursecost", "Course Cost"}
+			               }),
+			    Typed    = Table.TransformColumnTypes(Renamed, {
+			                   {"Requester ID", type text}, {"Course ID", type text},
+			                   {"Submitted On", type datetime}, {"Decision Date", type datetime},
+			                   {"Completed On", type datetime}, {"Course Cost", Currency.Type}
+			               }),
+			    // UTC → reporting time zone. Applied to all three so durations between them are unchanged.
+			    Shift    = (utc as nullable datetime) as nullable datetime =>
+			                   if utc = null then null else utc + #duration(0, ReportingUtcOffsetHours, 0, 0),
+			    Local    = Table.TransformColumns(Typed, {
+			                   {"Submitted On", Shift, type datetime}, {"Decision Date", Shift, type datetime},
+			                   {"Completed On", Shift, type datetime}
+			               }),
+			    // Date-only keys for the Date table relationships (datetime columns can't join to a date table cleanly).
+			    AddSubmittedDate = Table.AddColumn(Local, "Submitted Date",
+			                   each if [Submitted On] = null then null else DateTime.Date([Submitted On]), type date),
+			    AddDecisionDate  = Table.AddColumn(AddSubmittedDate, "Decision Day",
+			                   each if [Decision Date] = null then null else DateTime.Date([Decision Date]), type date)
+			in
+			    AddDecisionDate
+			```

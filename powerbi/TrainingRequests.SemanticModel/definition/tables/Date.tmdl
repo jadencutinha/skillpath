@@ -1,0 +1,64 @@
+table Date
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isNameInferred
+		isKey
+		formatString: Short Date
+		summarizeBy: none
+		sourceColumn: [Date]
+
+	column Year
+		dataType: int64
+		isNameInferred
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Year]
+
+	column Quarter
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Quarter]
+
+	column Month
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sortByColumn: MonthNum
+		sourceColumn: [Month]
+
+	column MonthNum
+		dataType: int64
+		isNameInferred
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [MonthNum]
+
+	column Weekday
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Weekday]
+
+	partition Date = calculated
+		mode: import
+		source = ```
+			VAR FirstDate = COALESCE ( MIN ( 'Training Request'[Submitted Date] ), TODAY () )
+			VAR LastDate =
+			    MAX (
+			        MAX ( MAX ( 'Training Request'[Submitted Date] ), MAX ( 'Training Request'[Decision Day] ) ),
+			        TODAY ()
+			    )
+			RETURN
+			    ADDCOLUMNS (
+			        CALENDAR ( DATE ( YEAR ( FirstDate ), 1, 1 ), DATE ( YEAR ( LastDate ), 12, 31 ) ),
+			        "Year", YEAR ( [Date] ),
+			        "Quarter", "Q" & QUARTER ( [Date] ),
+			        "Month", FORMAT ( [Date], "MMM yyyy" ),
+			        "MonthNum", YEAR ( [Date] ) * 100 + MONTH ( [Date] ),
+			        "Weekday", FORMAT ( [Date], "ddd" )
+			    )
+			```

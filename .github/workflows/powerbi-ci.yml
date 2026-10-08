@@ -1,0 +1,29 @@
+name: Power BI CI
+
+on:
+  push:
+    paths: ["powerbi/**", "ruff.toml", ".github/workflows/powerbi-ci.yml"]
+  pull_request:
+    paths: ["powerbi/**", "ruff.toml", ".github/workflows/powerbi-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: powerbi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: powerbi/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      # Fails if the committed project is stale, or a measure refers to a column that no query produces.
+      - run: pytest -q
